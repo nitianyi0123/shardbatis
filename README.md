@@ -1,93 +1,177 @@
-#sidebar UserGuideIndex
+Non-Intrusive Mybatis Sharding Plugin, source from [code.google.com/p/shardbatis](https://code.google.com/archive/p/shardbatis/)
 
-==shardbatis2.x使用指南==
-===运行环境===
- * jdk6.0+:shardbatis使用JDK6.0编译。也可以使用JDK5.0编译
- * mybatis3.0+
-===1.配置===
- * 添加sharding配置
-新建一个xml文件,例如：shard_config.xml
-{{{
+What is shardbatis?
+
+>Shardbatis的名称由shard(ing)+mybatis组合得到，诣在为mybatis实现数据水平切分的功能。数据的水平切分包括多数据库的切分和多表的数据切分，目前shardbatis只实现了单数据库的数据多表水平切分。Shardbatis2.0以插件的方式和mybatis3.x进行整合，对mybatis的代码无侵入，不改变用户对mybatis的使用习惯。
+
+# shardbatis2.x使用指南
+
+### 运行环境
+jdk 6.0+  
+mybatis 3.x
+
+### 下载 & 安装
+
+git clone https://github.com/colddew/shardbatis.git
+
+将repository目录下的shardbatis和jsqlparser导入maven本地仓库或者公司的二方库
+
+```
+mvn install:install-file -Dfile=./repository/org/shardbatis/shardbatis/2.0.0B/shardbatis-2.0.0B.jar -DgroupId=org.shardbatis -DartifactId=shardbatis -Dversion=2.0.0B -Dpackaging=jar -DgeneratePom=true -DcreateChecksum=true
+```
+
+```xml
+<!-- pom中引入依赖 -->
+<dependency>
+    <groupId>org.shardbatis</groupId>
+    <artifactId>shardbatis</artifactId>
+    <version>2.0.0B</version>
+</dependency>
+
+<!-- 由于googlecode已关闭远程仓库，已不可用 -->
+<repository>
+    <id>shardbaits</id>
+    <name>shardbaits repository</name>
+    <url>http://shardbatis.googlecode.com/svn/trunk/repository</url>
+    <snapshots>
+        <enabled>false</enabled>
+    </snapshots>
+</repository>
+```
+
+### 配置
+
+在应用的classpath中添加sharding配置文件shard_config.xml
+
+```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE shardingConfig PUBLIC "-//shardbatis.googlecode.com//DTD Shardbatis 2.0//EN"
-  "http://shardbatis.googlecode.com/dtd/shardbatis-config.dtd">
+<!DOCTYPE shardingConfig PUBLIC "-//shardbatis.googlecode.com//DTD Shardbatis 2.0//EN" "http://shardbatis.googlecode.com/dtd/shardbatis-config.dtd">
 <shardingConfig>
-	<!--
-		ignoreList可选配置
-		ignoreList配置的mapperId会被分表参加忽略解析,不会对sql进行修改
-	-->
-	<ignoreList>
-		<value>com.google.code.shardbatis.test.mapper.AppTestMapper.insertNoShard</value>
-	</ignoreList>
-	<!-- 
-		parseList可选配置
-		如果配置了parseList,只有在parseList范围内并且不再ignoreList内的sql才会被解析和修改
-	-->
-	<parseList>
-		<value>com.google.code.shardbatis.test.mapper.AppTestMapper.insert</value>
-	</parseList>
-	<!-- 
-		配置分表策略
-	-->
-	<strategy tableName="APP_TEST" strategyClass="com.google.code.shardbatis.strategy.impl.AppTestShardStrategyImpl"/>      
+    <!--
+        ignoreList可选配置
+        ignoreList配置的mapperId会被分表参加忽略解析,不会对sql进行修改
+    -->
+    <ignoreList>
+        <value>com.google.code.shardbatis.test.mapper.AppTestMapper.insertNoShard</value>
+    </ignoreList>
+    <!-- 
+        parseList可选配置
+        如果配置了parseList,只有在parseList范围内并且不再ignoreList内的sql才会被解析和修改
+    -->
+    <parseList>
+        <value>com.google.code.shardbatis.test.mapper.AppTestMapper.insert</value>
+    </parseList>
+    <!-- 
+        配置分表策略
+    -->
+    <strategy tableName="APP_TEST" strategyClass="com.google.code.shardbatis.strategy.impl.AppTestShardStrategyImpl"/>
 </shardingConfig>
-}}}
-shard_config.xml必须保存在应用的classpath中
- * 在mybatis配置文件中添加插件配置
-{{{
-<plugins>
-	<plugin interceptor="com.google.code.shardbatis.plugin.ShardPlugin">
-		<property name="shardingConfig" value="shard_config.xml"/>
-	</plugin>
-</plugins> 
-}}}
+```
 
-===2.实现自己的sharding策略===
- * 实现一个简单的接口即可
-{{{
-/**
- * 分表策略接口
- * @author sean.he
- *
- */
-public interface ShardStrategy {
-	/**
-	 * 得到实际表名
-	 * @param baseTableName 逻辑表名,一般是没有前缀或者是后缀的表名
-	 * @param params mybatis执行某个statement时使用的参数
-	 * @param mapperId mybatis配置的statement id
-	 * @return
-	 */
-	String getTargetTableName(String baseTableName,Object params,String mapperId);
+1）在dataSource中添加插件配置
+
+```java
+@Configuration
+@MapperScan(basePackages = "xxx.xxx.mapper", sqlSessionFactoryRef = "sqlSessionFactory")
+public class DatasourceConfig {
+
+    // 省略dataSource配置等相关代码
+
+    @Bean
+    public SqlSessionFactory sqlSessionFactory(DataSource dataSource) {
+        
+    	try {
+            final SqlSessionFactoryBean sessionFactory = new SqlSessionFactoryBean();
+            sessionFactory.setDataSource(dataSource);
+            sessionFactory.setMapperLocations(new PathMatchingResourcePatternResolver().getResources("classpath:mapper/*Mapper.xml"));
+            sessionFactory.setPlugins(new Interceptor[] { getShardPlugin() });
+            
+            return sessionFactory.getObject();
+        } catch (Exception e) {
+        	throw new RuntimeException("sqlSessionFactory configuration error", e);
+        }
+    }
+    
+    private Interceptor getShardPlugin() {
+    	
+    	Properties properties = new Properties();
+    	properties.setProperty("shardingConfig", "shard_config.xml");
+    	
+    	ShardPlugin shardPlugin = new ShardPlugin();
+    	shardPlugin.setProperties(properties);
+    	
+    	return shardPlugin;
+    }
 }
-}}}
- 可以参考
-{{{
-com.google.code.shardbatis.strategy.impl.AppTestShardStrategyImpl
-}}}
+```
 
-===3.代码中使用shardbatis===
-因为shardbatis2.0使用插件方式对mybatis功能进行增强，因此使用配置了shardbatis的mybatis3和使用原生的mybatis3没有区别
-{{{
+2）或者在mybatis配置文件中添加插件配置
+
+```xml
+<plugins>
+    <plugin interceptor="com.google.code.shardbatis.plugin.ShardPlugin">
+        <property name="shardingConfig" value="shard_config.xml"/>
+    </plugin>
+</plugins>
+```
+
+### 实现自定义sharding策略
+
+实现ShardStrategy接口，参考实现 ```java com.google.code.shardbatis.strategy.impl.AppTestShardStrategyImpl```
+
+```java
+/**
+* 分表策略接口
+*/
+public interface ShardStrategy {
+    /**
+     * 得到实际表名
+     * @param baseTableName 逻辑表名,一般是没有前缀或者是后缀的表名
+     * @param params mybatis执行某个statement时使用的参数
+     * @param mapperId mybatis配置的statement id
+     * @return 实际表名
+     */
+    String getTargetTableName(String baseTableName,Object params,String mapperId);
+}
+
+public class XXXShardStrategy implements ShardStrategy {
+	
+	@Override
+	public String getTargetTableName(String baseTableName, Object params, String mapperId) {
+		return baseTableName + getTableNameSuffix(params);
+	}
+	
+	private String getTableNameSuffix(Object params) {
+		// 例如可以根据用户id求余或者hash获取表名后缀
+	}
+}
+```
+
+### 代码中使用shardbatis
+
+因为shardbatis2.0使用插件方式对mybatis功能进行增强，代码无侵入，因此使用配置了shardbatis的mybatis3和使用原生的mybatis3没有区别
+
+```java
 SqlSession session = sqlSessionFactory.openSession();
 try {
-	AppTestMapper mapper = session.getMapper(AppTestMapper.class);
-  mapper.insert(testDO);
-	session.commit();
+    AppTestMapper mapper = session.getMapper(AppTestMapper.class);
+    mapper.insert(testDO);
+    session.commit();
 } finally {
-	session.close();
+    session.close();
 }
-}}}
+```
 
-===<font color="red">使用注意事项</font>===
- * 2.0版本中insert update delete 语句中的*子查询语句中的表*不支持sharding(不好意思太拗口了-`_`-!)
- * select语句中如果进行多表关联，请务必为每个表名加上别名
-{{{
-例如原始sql语句：SELECT a.* FROM ANTIQUES a,ANTIQUEOWNERS b, mytable c where a.id=b.id and b.id=c.id
-经过转换后的结果可能为：SELECT a.* FROM ANTIQUES_0 AS a, ANTIQUEOWNERS_1 AS b, mytable_1 AS c WHERE a.id = b.id AND b.id = c.id
-}}}
- * 目前已经支持了大部分的sql语句的解析，已经测试通过的语句可以查看测试用例：
-{{{
+#### 使用注意事项
+
+2.0版本中inser、update、delete语句中的子查询语句中的表不支持sharding
+
+select语句中如果进行多表关联，请务必为每个表名加上别名，例如原始sql语句：`SELECT a.* FROM ANTIQUES a, ANTIQUEOWNERS b, mytable c where a.id=b.id and b.id=c.id`
+经过转换后的结果可能为：`SELECT a.* FROM ANTIQUES_0 AS a, ANTIQUEOWNERS_1 AS b, mytable_1 AS c WHERE a.id = b.id AND b.id = c.id`	
+
+shardbatis对sql的解析基于jsqlparser，目前已经支持大部分sql语句的解析，已经测试通过的语句可以查看测试用例：
+
+```sql
 select * from test_table1
 select * from test_table1 where col_1='123'
 select * from test_table1 where col_1='123' and col_2=8
@@ -116,28 +200,4 @@ update test_table1 set col_1=?,col_2=col_2+1 where id in (?,?,?,?)
 delete from test_table2 where id in (?,?,?,?,?,?) and col_1 is not null
 INSERT INTO test_table1 VALUES (21, 01, 'Ottoman', ?,?)
 INSERT INTO test_table1 (BUYERID, SELLERID, ITEM) VALUES (01, 21, ?)
-}}}
- 可能有些sql语句没有出现在测试用例里，但是相信基本上常用的查询sql shardbatis解析都没有问题，因为shardbatis对sql的解析是基于<a target="_blank" href="http://jsqlparser.sourceforge.net/">jsqlparser</a>
-
-===下载、安装===
- * 在maven中使用（推荐）
-{{{
-<!-- 新增远程仓库设置 -->
-<repository>
-	<id>shardbaits</id>
-	<name>shardbaits repository</name>
-	<url>http://shardbatis.googlecode.com/svn/trunk/repository</url>
-	<snapshots>
-		<enabled>false</enabled>
-	</snapshots>
-</repository>
-
-<!-- 声明依赖 -->
-<dependency>
-	<groupId>org.shardbatis</groupId>
-	<artifactId>shardbatis</artifactId>
-	<version>2.0.0B</version>
-</dependency>
-}}}
- * 手工添加到项目classpath中
-请到download页面下载
+```
