@@ -1,0 +1,47 @@
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svn/!svn/ver/35/trunk/src/main/java/com/google/code/shardbatis/converter
+END
+SqlConverterFactory.java
+K 25
+svn:wc:ra_dav:version-url
+V 98
+/svn/!svn/ver/35/trunk/src/main/java/com/google/code/shardbatis/converter/SqlConverterFactory.java
+END
+SqlConverter.java
+K 25
+svn:wc:ra_dav:version-url
+V 91
+/svn/!svn/ver/35/trunk/src/main/java/com/google/code/shardbatis/converter/SqlConverter.java
+END
+SelectSqlConverter.java
+K 25
+svn:wc:ra_dav:version-url
+V 97
+/svn/!svn/ver/35/trunk/src/main/java/com/google/code/shardbatis/converter/SelectSqlConverter.java
+END
+UpdateSqlConverter.java
+K 25
+svn:wc:ra_dav:version-url
+V 97
+/svn/!svn/ver/35/trunk/src/main/java/com/google/code/shardbatis/converter/UpdateSqlConverter.java
+END
+DeleteSqlConverter.java
+K 25
+svn:wc:ra_dav:version-url
+V 97
+/svn/!svn/ver/35/trunk/src/main/java/com/google/code/shardbatis/converter/DeleteSqlConverter.java
+END
+AbstractSqlConverter.java
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/svn/!svn/ver/35/trunk/src/main/java/com/google/code/shardbatis/converter/AbstractSqlConverter.java
+END
+InsertSqlConverter.java
+K 25
+svn:wc:ra_dav:version-url
+V 97
+/svn/!svn/ver/35/trunk/src/main/java/com/google/code/shardbatis/converter/InsertSqlConverter.java
+END

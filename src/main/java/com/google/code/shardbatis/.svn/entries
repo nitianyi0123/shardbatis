@@ -1,0 +1,77 @@
+10
+
+dir
+43
+http://shardbatis.googlecode.com/svn/trunk/src/main/java/com/google/code/shardbatis
+http://shardbatis.googlecode.com/svn
+
+
+
+2011-07-23T04:56:00.023607Z
+35
+hejin016@gmail.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+a8f834c0-0a50-dfb0-f03c-27c8dfa61fd9
+
+strategy
+dir
+
+builder
+dir
+
+converter
+dir
+
+util
+dir
+
+plugin
+dir
+
+ShardException.java
+file
+
+
+
+
+2016-03-21T22:23:01.902152Z
+b582d32c4ca89acaf6710b99e1e0ee42
+2011-07-23T04:56:00.023607Z
+35
+hejin016@gmail.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+450
+
